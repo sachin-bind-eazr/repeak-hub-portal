@@ -1,0 +1,30 @@
+{
+  "name": "repeak-hub-portal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Repeak Hub Portal — common login + product activation for Club, Brand, and Organizer. Mints short-lived activation tokens and hands off to the dedicated Organizer/Club/Brand Manager portals.",
+  "scripts": {
+    "dev": "next dev -p 4006",
+    "build": "next build",
+    "start": "next start -p 4006",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "classnames": "^2.5.1",
+    "lucide-react": "^1.28.0",
+    "next": "14.2.4",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.4",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}

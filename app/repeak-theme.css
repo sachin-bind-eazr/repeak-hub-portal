@@ -1,0 +1,342 @@
+/**
+ * Repeak design tokens as CSS variables (2026-05-21 — dark mode).
+ *
+ * Byte-for-byte copy of web-partner-portal/app/repeak-theme.css — the
+ * Hub Portal shares the same design system as the Organizer/Brand/Club
+ * Manager instances (see components/brand-v2/tokens.ts's header
+ * comment there: "Brand Manager, Organizer Manager, Club Manager, and
+ * the Repeak Hub all share this base"). No shared package exists
+ * across apps in this monorepo, so this is a deliberate copy, not an
+ * import — keep the two files in sync by hand if the source changes.
+ *
+ * The Hub never toggles `.dark` (no theme switcher here, no
+ * next-themes dependency) — it always renders the `:root` (light)
+ * values below, which is also partner-portal's own default theme.
+ * The `.dark` block is kept for parity/future use, not currently
+ * applied.
+ *
+ * The OM/partner token objects (CONSOLE / TOKENS / ACCENT / DATAVIZ)
+ * resolve their COLOUR + SHADOW values to these `--rp-*` vars, so the
+ * thousands of inline-styled surfaces re-theme at runtime when
+ * next-themes toggles the `.dark` class on <html> — no per-component
+ * rewrite needed. Radii / fonts / motion stay literal (theme-invariant).
+ *
+ * Light = the soft full-light Strava aesthetic. Dark = the reference
+ * dark view: near-black canvas, dark cards, inverted text, pastels
+ * unchanged, route flips red→cyan, green stays the accent.
+ */
+
+:root {
+  /* Tell the browser to render native controls (date pickers, scrollbars,
+     etc.) for the active theme. */
+  color-scheme: light;
+
+  /* Surfaces */
+  --rp-canvas: #f5f5f2;
+  --rp-surface: #ffffff;
+  --rp-surface-muted: #fafaf8;
+  --rp-surface-sunken: #efefeb;
+  --rp-surface-sub: #fafaf8;
+  /* Top bar — frosted glass over page content (backdrop-filter required) */
+  --rp-topbar-bg: rgba(245, 245, 242, 0.88);
+  --rp-topbar-border: rgba(15, 17, 18, 0.10);
+  --rp-canvas-wash:
+    radial-gradient(120% 60% at 12% 0%, rgba(255, 237, 224, 0.45) 0%, rgba(255, 237, 224, 0) 60%),
+    radial-gradient(120% 70% at 100% 100%, rgba(224, 240, 240, 0.42) 0%, rgba(224, 240, 240, 0) 55%),
+    #f5f5f2;
+
+  /* Dark chrome (legacy graphite tokens) */
+  --rp-graphite: #0b0f10;
+  --rp-graphite-2: #15191b;
+  --rp-graphite-3: #1f2326;
+
+  /* Borders / rules */
+  --rp-border: rgba(15, 17, 18, 0.1);
+  --rp-border-strong: rgba(15, 17, 18, 0.16);
+  --rp-border-subtle: rgba(15, 17, 18, 0.1);
+  --rp-rule: rgba(15, 17, 18, 0.1);
+  --rp-rule-strong: rgba(15, 17, 18, 0.16);
+  --rp-rule-heavy: rgba(15, 17, 18, 0.22);
+
+  /* Text */
+  --rp-text-primary: #0b0f10;
+  --rp-text-secondary: #3f4750;
+  --rp-text-tertiary: #5a6470;
+  --rp-text-muted: #6b7280;
+  --rp-text-inverse: #ffffff;
+  --rp-text-on-dark: #f4f2ee;
+  --rp-text-muted-on-dark: rgba(244, 242, 238, 0.55);
+
+  /* Selection / bulk-action bar — native white surface for light theme.
+     Floats above the canvas with a crisp shadow; dark text on white reads
+     cleanly without the jarring dark-bar-on-light contrast. */
+  --rp-selection-bar-bg: #ffffff;
+  --rp-selection-bar-fg: #0b0f10;
+  --rp-selection-bar-border: rgba(15, 17, 18, 0.11);
+  --rp-selection-btn-bg: rgba(15, 17, 18, 0.05);
+  --rp-selection-btn-border: rgba(15, 17, 18, 0.14);
+  --rp-selection-bar-divider: rgba(15, 17, 18, 0.1);
+  --rp-selection-bar-shadow: 0 4px 24px rgba(0, 0, 0, 0.1), 0 1px 6px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(15, 17, 18, 0.08);
+
+  /* Primary (shared Club green CTA) */
+  --rp-primary: #00d277;
+  --rp-primary-hover: #00a75d;
+  --rp-primary-fg: #001507;
+
+  /* Status */
+  --rp-success-bg: rgba(22, 138, 90, 0.1);
+  --rp-success-fg: #0e6f46;
+  --rp-warning-bg: rgba(184, 122, 6, 0.1);
+  --rp-warning-fg: #8a5c09;
+  --rp-danger-bg: rgba(196, 41, 57, 0.08);
+  --rp-danger-fg: #a6202e;
+  --rp-info-bg: rgba(63, 71, 80, 0.08);
+  --rp-info-fg: #3f4750;
+  --rp-neutral-bg: rgba(15, 17, 18, 0.05);
+  --rp-neutral-fg: #3f4750;
+
+  /* Accent — shared Club green family */
+  --rp-brand-deep: #007e45;
+  --rp-brand-bright: #00d277;
+  --rp-brand-mist: rgba(0, 210, 119, 0.1);
+  --rp-brand-halo: rgba(0, 210, 119, 0.18);
+  --rp-brand-glow: rgba(0, 210, 119, 0.3);
+  --rp-brand-on-dark: #15ff93;
+  --rp-brand-text: #007e45;
+  --rp-brand-gradient: linear-gradient(135deg, #00a75d 0%, #00d277 100%);
+  --rp-brand-gradient-hover: linear-gradient(135deg, #007e45 0%, #00a75d 100%);
+  /* coral (LIVE) */
+  --rp-coral-deep: #e0382a;
+  --rp-coral-bright: #f5503c;
+  --rp-coral-mist: rgba(245, 80, 60, 0.1);
+  --rp-coral-halo: rgba(245, 80, 60, 0.18);
+  --rp-coral-text: #a8281c;
+  /* lime (SUCCESS/EARNED) */
+  --rp-lime-deep: #7fcc54;
+  --rp-lime-bright: #9fe870;
+  --rp-lime-mist: rgba(159, 232, 112, 0.14);
+  /* amber (PENDING) */
+  --rp-amber-deep: #d89a1f;
+  --rp-amber-bright: #f2b53a;
+  --rp-amber-mist: rgba(242, 181, 58, 0.12);
+  --rp-amber-text: #7a570f;
+
+  /* Data-viz pastels */
+  --rp-dv-hr-line: #4fb3e8;
+  --rp-dv-hr-fill: rgba(79, 179, 232, 0.18);
+  --rp-dv-cadence-line: #f6a24b;
+  --rp-dv-cadence-fill: rgba(246, 162, 75, 0.18);
+  --rp-dv-pace-line: #54c08a;
+  --rp-dv-pace-fill: rgba(84, 192, 138, 0.18);
+  --rp-dv-power-line: #8e8fe8;
+  --rp-dv-power-fill: rgba(142, 143, 232, 0.18);
+  --rp-dv-elev-line: #a0a6ad;
+  --rp-dv-elev-fill: rgba(160, 166, 173, 0.16);
+  --rp-dv-ring-sleep: #8e8fe8;
+  --rp-dv-ring-recovery: #37b679;
+  --rp-dv-ring-strain: #5bb8e0;
+  --rp-dv-ring-track: rgba(15, 17, 18, 0.13);
+  --rp-dv-route: #fc4c5a;
+  --rp-dv-grid: rgba(15, 17, 18, 0.06);
+
+  /* ----------------------------------------------------------
+     Geometry / type / space / motion (Phase 3).
+
+     Theme-INVARIANT — declared once in :root and deliberately NOT
+     overridden in .dark, because a radius or a duration does not
+     change between themes. Mirrors RADIUS / TYPE / SPACE / MOTION
+     in components/brand-v2/tokens.ts; keep the two in step.
+     ---------------------------------------------------------- */
+
+  /* Radius — control 10 · card 12 · panel 16 · dialog 22 · pill */
+  --rp-radius-sm: 10px;
+  --rp-radius-md: 12px;
+  --rp-radius-lg: 16px;
+  --rp-radius-xl: 22px;
+  --rp-radius-pill: 999px;
+
+  /* Type — ten steps, no half-steps, 11px hard floor */
+  --rp-text-micro: 11px;
+  --rp-text-caption: 12px;
+  --rp-text-body: 13px;
+  --rp-text-body-lg: 14px;
+  --rp-text-title: 16px;
+  --rp-text-title-lg: 18px;
+  --rp-text-heading: 20px;
+  --rp-text-heading-lg: 24px;
+  --rp-text-display: 28px;
+  --rp-text-display-lg: 32px;
+  --rp-text-page: clamp(22px, 2.6vw, 32px);
+
+  /* Weights */
+  --rp-weight-body: 500;
+  --rp-weight-medium: 600;
+  --rp-weight-bold: 700;
+  --rp-weight-display: 800;
+
+  /* Spacing — 2px rhythm (see tokens.ts SPACE for why not 4px) */
+  --rp-space-hair: 2px;
+  --rp-space-xxs: 4px;
+  --rp-space-xs: 6px;
+  --rp-space-sm: 8px;
+  --rp-space-smd: 10px;
+  --rp-space-md: 12px;
+  --rp-space-mdl: 14px;
+  --rp-space-lg: 16px;
+  --rp-space-lgx: 18px;
+  --rp-space-xl: 20px;
+  --rp-space-xxl: 24px;
+  --rp-space-xxxl: 32px;
+
+  /* Control heights — one ladder for buttons, inputs, selects, tabs */
+  --rp-control-sm: 32px;
+  --rp-control-md: 36px;
+  --rp-control-lg: 40px;
+
+  /* Motion — three durations, one easing curve */
+  --rp-motion-fast: 140ms;
+  --rp-motion-base: 200ms;
+  --rp-motion-slow: 320ms;
+  --rp-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Focus ring — one definition, used by every focusable control */
+  --rp-focus-ring: 0 0 0 3px color-mix(in srgb, var(--rp-primary) 16%, transparent);
+
+  /* Modal / drawer scrim — one value, themed (see .dark override) */
+  --rp-overlay: rgba(11, 15, 16, 0.48);
+
+  /* Shadows */
+  --rp-shadow-soft: 0 1px 2px rgba(15, 17, 18, 0.04), 0 1px 3px rgba(15, 17, 18, 0.05);
+  --rp-shadow-card: 0 1px 2px rgba(15, 17, 18, 0.04), 0 8px 20px -12px rgba(15, 17, 18, 0.16);
+  --rp-shadow-float: 0 4px 8px rgba(15, 17, 18, 0.06), 0 16px 36px -16px rgba(15, 17, 18, 0.18);
+  --rp-shadow-lift: 0 1px 2px rgba(15, 17, 18, 0.04), 0 10px 24px -14px rgba(15, 17, 18, 0.18);
+  --rp-shadow-lift-hover: 0 2px 4px rgba(15, 17, 18, 0.05), 0 16px 32px -16px rgba(15, 17, 18, 0.22);
+  --rp-shadow-hero: 0 4px 10px rgba(15, 17, 18, 0.06), 0 28px 56px -24px rgba(15, 17, 18, 0.28);
+  /* Sticky bottom action bar — casts UPWARD onto the scrolling content.
+     Four surfaces were each hand-rolling their own near-miss version of
+     this (event studio, event layout, profile edit, KYC upload). */
+  --rp-shadow-bar: 0 -4px 16px -6px rgba(15, 17, 18, 0.10);
+
+  /* Chart series — the categorical ramp from components/organizer-v2/palette.ts,
+     exposed as CSS vars so an SVG `fill` can pick up the theme.
+
+     These are the ONLY series values that are theme-stepped. palette.ts
+     says a series must keep its identity when the theme flips, and that
+     still holds: the HUE is identical in both themes (emerald stays
+     emerald, amber stays amber). What changes is the STEP, because the
+     light-mode steps of those two fall outside the perceptual lightness
+     band for the dark surface — verified with the dataviz palette
+     validator against #16191c, where #10B981 (L 0.696) and #F59E0B
+     (L 0.769) both FAIL the 0.48–0.67 band. The dark steps below pass
+     every check on that surface. Series 1/2/5 need no adjustment and are
+     byte-identical across themes. */
+  --rp-series-1: #00a75d; /* brand green */
+  --rp-series-2: #6c63ff; /* indigo */
+  --rp-series-3: #10b981; /* emerald */
+  --rp-series-4: #f59e0b; /* amber */
+  --rp-series-5: #3b82f6; /* blue */
+  /* Recessive chart furniture — grid lines and axis ticks must sit
+     below the data, never compete with it. */
+  --rp-chart-grid: rgba(15, 17, 18, 0.07);
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* See the note in :root — same hues, steps re-selected for the dark
+     surface so they clear the lightness band and the 3:1 contrast floor. */
+  --rp-series-3: #059669;
+  --rp-series-4: #d97706;
+  --rp-chart-grid: rgba(245, 245, 242, 0.09);
+
+  /* Surfaces — near-black canvas, lifted dark cards */
+  --rp-canvas: #0b0f10;
+  --rp-surface: #16191c;
+  --rp-surface-muted: #1b1f23;
+  --rp-surface-sunken: #23282d;
+  --rp-surface-sub: #1b1f23;
+  /* Top bar — frosted dark glass */
+  --rp-topbar-bg: rgba(11, 15, 16, 0.88);
+  --rp-topbar-border: rgba(255, 255, 255, 0.08);
+  --rp-canvas-wash:
+    radial-gradient(120% 60% at 12% 0%, rgba(0, 210, 119, 0.08) 0%, rgba(0, 210, 119, 0) 60%),
+    radial-gradient(120% 70% at 100% 100%, rgba(91, 184, 224, 0.07) 0%, rgba(91, 184, 224, 0) 55%),
+    #0b0f10;
+
+  /* Borders / rules — light-on-dark hairlines */
+  --rp-border: rgba(255, 255, 255, 0.11);
+  --rp-border-strong: rgba(255, 255, 255, 0.2);
+  --rp-border-subtle: rgba(255, 255, 255, 0.08);
+  --rp-rule: rgba(255, 255, 255, 0.1);
+  --rp-rule-strong: rgba(255, 255, 255, 0.18);
+  --rp-rule-heavy: rgba(255, 255, 255, 0.26);
+
+  /* Text — inverted */
+  --rp-text-primary: #f3f1ed;
+  --rp-text-secondary: #c6cbd0;
+  --rp-text-tertiary: #9aa3ac;
+  --rp-text-muted: #8b95a0;
+  --rp-text-inverse: #0b0f10;
+  --rp-text-on-dark: #f4f2ee;
+
+  /* Selection / bulk-action bar — elevated dark panel (no white flip).
+     Sits a step above the canvas/cards so it still reads as a floating
+     action surface, with light text + translucent ghost buttons. */
+  --rp-selection-bar-bg: #21262b;
+  --rp-selection-bar-fg: #f3f1ed;
+  --rp-selection-bar-border: rgba(255, 255, 255, 0.12);
+  --rp-selection-btn-bg: rgba(255, 255, 255, 0.09);
+  --rp-selection-btn-border: rgba(255, 255, 255, 0.16);
+  --rp-selection-bar-divider: rgba(255, 255, 255, 0.14);
+  --rp-selection-bar-shadow: 0 4px 20px rgba(0, 0, 0, 0.28), 0 1px 4px rgba(0, 0, 0, 0.14);
+
+  /* Primary (Club green stays the accent) */
+  --rp-primary: #00d277;
+  --rp-primary-hover: #15ff93;
+  --rp-primary-fg: #001507;
+
+  /* Status — brighter fg, deeper bg for dark */
+  --rp-success-bg: rgba(34, 197, 94, 0.16);
+  --rp-success-fg: #5fe0a2;
+  --rp-warning-bg: rgba(245, 158, 11, 0.16);
+  --rp-warning-fg: #fbbf3c;
+  --rp-danger-bg: rgba(248, 113, 113, 0.16);
+  --rp-danger-fg: #fb8a8a;
+  --rp-info-bg: rgba(148, 163, 184, 0.16);
+  --rp-info-fg: #cbd5e1;
+  --rp-neutral-bg: rgba(255, 255, 255, 0.07);
+  --rp-neutral-fg: #c6cbd0;
+
+  /* Accent — green family (mist/halo stronger to read on dark; text lighter) */
+  --rp-brand-mist: rgba(0, 210, 119, 0.18);
+  --rp-brand-halo: rgba(21, 255, 147, 0.3);
+  --rp-brand-text: #15ff93;
+  --rp-coral-mist: rgba(245, 80, 60, 0.18);
+  --rp-coral-halo: rgba(245, 80, 60, 0.32);
+  --rp-coral-text: #ff8a72;
+  --rp-lime-mist: rgba(159, 232, 112, 0.18);
+  --rp-amber-mist: rgba(242, 181, 58, 0.18);
+  --rp-amber-text: #f2b53a;
+
+  /* Data-viz — pastels unchanged; fills/track lifted; route flips to cyan */
+  --rp-dv-hr-fill: rgba(79, 179, 232, 0.22);
+  --rp-dv-cadence-fill: rgba(246, 162, 75, 0.22);
+  --rp-dv-pace-fill: rgba(84, 192, 138, 0.22);
+  --rp-dv-power-fill: rgba(142, 143, 232, 0.22);
+  --rp-dv-elev-fill: rgba(160, 166, 173, 0.2);
+  --rp-dv-ring-track: rgba(255, 255, 255, 0.2);
+  --rp-dv-route: #36d1ff;
+  --rp-dv-grid: rgba(255, 255, 255, 0.08);
+
+  /* Scrim — deeper on dark so the dialog still separates from the canvas */
+  --rp-overlay: rgba(0, 0, 0, 0.66);
+
+  /* Shadows — deeper, black-based */
+  --rp-shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --rp-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45), 0 10px 26px -14px rgba(0, 0, 0, 0.7);
+  --rp-shadow-float: 0 8px 28px rgba(0, 0, 0, 0.6);
+  --rp-shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 28px -16px rgba(0, 0, 0, 0.7);
+  --rp-shadow-lift-hover: 0 2px 6px rgba(0, 0, 0, 0.5), 0 18px 36px -18px rgba(0, 0, 0, 0.8);
+  --rp-shadow-hero: 0 6px 14px rgba(0, 0, 0, 0.5), 0 30px 60px -26px rgba(0, 0, 0, 0.85);
+  --rp-shadow-bar: 0 -4px 18px -6px rgba(0, 0, 0, 0.55);
+}
