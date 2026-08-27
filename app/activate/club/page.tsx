@@ -16,6 +16,7 @@ import {
   getClubCreationEligibility,
   ClubKyc,
 } from "@/lib/club-onboarding";
+import { usableMediaUrl } from "@/lib/media-url";
 import { OMCard } from "@/components/om/OMCard";
 import { OMField, OMFieldGroup, OMInput, OMTextarea, OMFileInput } from "@/components/om/OMField";
 import { OMButton } from "@/components/om/OMButton";
@@ -74,6 +75,8 @@ export default function ActivateClubPage() {
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const previewLogoUrl = usableMediaUrl(logoUrl);
+  const previewBannerUrl = usableMediaUrl(bannerUrl);
 
   // Step 3 — Description
   const [description, setDescription] = useState("");
@@ -443,17 +446,17 @@ export default function ActivateClubPage() {
                 <OMField label="Logo" help="Optional — 5MB max">
                   <OMFileInput accept="image/*" onChange={(f) => handlePick("logo", f)} />
                   {uploadingLogo && <p className="mt-1 text-xs text-text-tertiary">Uploading…</p>}
-                  {logoUrl && (
+                  {previewLogoUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logoUrl} alt="" className="mt-2 h-12 w-12 rounded-rp-sm object-cover" />
+                    <img src={previewLogoUrl} alt="" className="mt-2 h-12 w-12 rounded-rp-sm object-cover" />
                   )}
                 </OMField>
                 <OMField label="Banner" help="Optional — 5MB max">
                   <OMFileInput accept="image/*" onChange={(f) => handlePick("banner", f)} />
                   {uploadingBanner && <p className="mt-1 text-xs text-text-tertiary">Uploading…</p>}
-                  {bannerUrl && (
+                  {previewBannerUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={bannerUrl} alt="" className="mt-2 h-20 w-full rounded-rp-sm object-cover" />
+                    <img src={previewBannerUrl} alt="" className="mt-2 h-20 w-full rounded-rp-sm object-cover" />
                   )}
                 </OMField>
               </OMFieldGroup>

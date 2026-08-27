@@ -14,6 +14,7 @@ import { CONSOLE, FONT, TYPE } from "@/lib/hub-tokens";
 import { OnboardingSteps, OnboardingStep } from "@/components/OnboardingSteps";
 import { CheckCircle2, LifeBuoy } from "lucide-react";
 import { getOfficialPartner, OfficialPartnerProjection } from "@/lib/official-partner";
+import { usableMediaUrl } from "@/lib/media-url";
 
 const surfaceCard: React.CSSProperties = {
   background: CONSOLE.surface,
@@ -64,6 +65,7 @@ export default function ProductDetailsPage() {
   const [officialPartner, setOfficialPartner] = useState<OfficialPartnerProjection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
+  const entityLogoUrl = usableMediaUrl(entity?.logoUrl);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -328,10 +330,10 @@ export default function ProductDetailsPage() {
             {entity ? (
               <div style={{ ...surfaceCard, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {entity.logoUrl && (
+                  {entityLogoUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={entity.logoUrl}
+                      src={entityLogoUrl}
                       alt=""
                       style={{ width: 40, height: 40, borderRadius: 10, objectFit: "cover" }}
                     />
