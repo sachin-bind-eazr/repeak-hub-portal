@@ -5,6 +5,12 @@ import "./repeak-theme.css";
 import "@/components/om-primitives.css";
 import { HubHeader } from "@/components/HubHeader";
 import { ProfileProvider } from "@/lib/ProfileContext";
+import dynamic from "next/dynamic";
+
+const RepeakAiAssistant = dynamic(
+  () => import("@/components/RepeakAiAssistant"),
+  { ssr: false },
+);
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -28,6 +34,7 @@ export default function RootLayout({
         <ProfileProvider>
           <HubHeader />
           {children}
+          <RepeakAiAssistant />
         </ProfileProvider>
       </body>
     </html>
