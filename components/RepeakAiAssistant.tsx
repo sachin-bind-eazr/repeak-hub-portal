@@ -1,40 +1,573 @@
 "use client";
 
-import { ArrowUp, Copy, RefreshCw, RotateCcw, Sparkles, Square, X } from "lucide-react";
+import {
+  ArrowUp,
+  Copy,
+  RefreshCw,
+  RotateCcw,
+  Sparkles,
+  Square,
+  X,
+} from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import SafeMarkdown from "./SafeMarkdown";
 import { getStoredToken, isAuthenticated } from "@/lib/auth";
+import SafeMarkdown from "./SafeMarkdown";
 import styles from "./RepeakAiAssistant.module.css";
 
-type Message={id:string;role:"user"|"assistant";content:string;failed?:boolean;actions?:Array<{type:string;label:string;destination?:{platform?:string;route?:string}}>;suggestions?:Array<{type:string;label:string;message?:string}>};
-const BASE=(process.env.NEXT_PUBLIC_REPEAK_AI_BASE_URL||"https://claout-ai-746271877146.asia-south1.run.app").replace(/\/$/,"");
-const MAX=4000; const FOCUS='button:not([disabled]),a[href],textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
-const newId=()=>typeof crypto!=="undefined"&&"randomUUID" in crypto?crypto.randomUUID():`${Date.now()}-${Math.random()}`;
-const thread=()=>`hub-${newId()}`.replace(/[^a-zA-Z0-9_-]/g,"").slice(0,128);
-const allowedPrefixes=["/home","/profile","/details","/activate"];
-const safeError=(status:number)=>status===401?"Your session has expired. Please sign in again.":status===403?"You do not have access to this answer.":status===429?"Too many requests. Please wait a moment and try again.":"Repeak AI is temporarily unavailable. Please try again.";
+type AssistantAction = {
+  type: string;
+  label: string;
+  destination?: { platform?: string; route?: string };
+};
 
-async function chat(args:{threadId:string;text:string;messages:Message[];pathname:string;signal:AbortSignal;progress:(text:string)=>void}){
-  if(!navigator.onLine)throw new Error("You appear to be offline. Reconnect and try again.");
-  const token=getStoredToken();if(!token)throw new Error(safeError(401));
-  const response=await fetch(`${BASE}/hub/chat`,{method:"POST",headers:{Authorization:`Bearer ${token}`,Accept:"text/event-stream","Content-Type":"application/json"},signal:args.signal,body:JSON.stringify({thread_id:args.threadId,message:args.text.slice(0,MAX),timezone:Intl.DateTimeFormat().resolvedOptions().timeZone.slice(0,64),history:args.messages.filter(m=>!m.failed).slice(-20).map(({role,content})=>({role,content:content.slice(0,MAX)})),current_page:{title:document.title.slice(0,160),route:args.pathname.slice(0,500),url:`${location.origin}${args.pathname}`.slice(0,1000)}})});
-  if(!response.ok)throw new Error(safeError(response.status));if(!response.body)throw new Error(safeError(503));
-  const reader=response.body.getReader(),decoder=new TextDecoder();let buffer="";
-  while(true){const{value,done}=await reader.read();buffer+=decoder.decode(value,{stream:!done}).replace(/\r\n/g,"\n");let cut=buffer.indexOf("\n\n");while(cut>=0){const block=buffer.slice(0,cut);buffer=buffer.slice(cut+2);const event=block.split("\n").find(x=>x.startsWith("event:"))?.slice(6).trim();const lines=block.split("\n").filter(x=>x.startsWith("data:")).map(x=>x.slice(5).trimStart());if(lines.length){let data:any;try{data=JSON.parse(lines.join("\n"))}catch{data=null}if(event==="progress")args.progress(String(data?.message||data?.text||"Working on itâ€¦").slice(0,120));if(event==="error")throw new Error(safeError(503));if(event==="final"&&data?.text)return data;}cut=buffer.indexOf("\n\n");}if(done)break;}throw new Error(safeError(503));
+type AssistantSuggestion = { type: string; label: string; message?: string };
+
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  failed?: boolean;
+  actions?: AssistantAction[];
+  suggestions?: AssistantSuggestion[];
+};
+
+type AssistantReply = {
+  text: string;
+  actions?: AssistantAction[];
+  suggestions?: AssistantSuggestion[];
+};
+
+const BASE = (
+  process.env.NEXT_PUBLIC_REPEAK_AI_BASE_URL ||
+  "https://claout-ai-746271877146.asia-south1.run.app"
+).replace(/\/$/, "");
+const MAX_LENGTH = 4000;
+const FOCUSABLE =
+  'button:not([disabled]),a[href],textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+const ALLOWED_PREFIXES = ["/home", "/profile", "/details", "/activate"];
+
+const createId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`;
+
+const createThreadId = () =>
+  `hub-${createId()}`.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 128);
+
+const errorForStatus = (status: number) => {
+  if (status === 401) return "Your session has expired. Please sign in again.";
+  if (status === 403) return "You do not have access to this answer.";
+  if (status === 429)
+    return "Too many requests. Please wait a moment and try again.";
+  return "Repeak AI is temporarily unavailable. Please try again.";
+};
+
+async function streamChat(args: {
+  threadId: string;
+  text: string;
+  messages: Message[];
+  pathname: string;
+  signal: AbortSignal;
+  onProgress: (text: string) => void;
+}): Promise<AssistantReply> {
+  if (!navigator.onLine) {
+    throw new Error("You appear to be offline. Reconnect and try again.");
+  }
+
+  const token = getStoredToken();
+  if (!token) throw new Error(errorForStatus(401));
+
+  const response = await fetch(`${BASE}/hub/chat`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "text/event-stream",
+      "Content-Type": "application/json",
+    },
+    signal: args.signal,
+    body: JSON.stringify({
+      thread_id: args.threadId,
+      message: args.text.slice(0, MAX_LENGTH),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone.slice(0, 64),
+      history: args.messages
+        .filter((message) => !message.failed)
+        .slice(-20)
+        .map(({ role, content }) => ({
+          role,
+          content: content.slice(0, MAX_LENGTH),
+        })),
+      current_page: {
+        title: document.title.slice(0, 160),
+        route: args.pathname.slice(0, 500),
+        url: `${location.origin}${args.pathname}`.slice(0, 1000),
+      },
+    }),
+  });
+
+  if (!response.ok) throw new Error(errorForStatus(response.status));
+  if (!response.body) throw new Error(errorForStatus(503));
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder
+      .decode(value || new Uint8Array(), { stream: !done })
+      .replace(/\r\n/g, "\n");
+
+    let boundary = buffer.indexOf("\n\n");
+    while (boundary >= 0) {
+      const block = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      const event = block
+        .split("\n")
+        .find((line) => line.startsWith("event:"))
+        ?.slice(6)
+        .trim();
+      const dataLines = block
+        .split("\n")
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart());
+
+      if (dataLines.length) {
+        let data: Record<string, unknown> | null = null;
+        try {
+          data = JSON.parse(dataLines.join("\n"));
+        } catch {
+          data = null;
+        }
+
+        if (event === "progress") {
+          args.onProgress(
+            String(data?.message || data?.text || "Working on it...").slice(
+              0,
+              120,
+            ),
+          );
+        }
+        if (event === "error") throw new Error(errorForStatus(503));
+        if (event === "final" && data?.text) {
+          return data as unknown as AssistantReply;
+        }
+      }
+
+      boundary = buffer.indexOf("\n\n");
+    }
+
+    if (done) break;
+  }
+
+  throw new Error(errorForStatus(503));
 }
 
-export default function RepeakAiAssistant(){
-  const pathname=usePathname()||"/",router=useRouter(),titleId=useId();const fab=useRef<HTMLButtonElement>(null),panel=useRef<HTMLElement>(null),end=useRef<HTMLDivElement>(null),abort=useRef<AbortController|null>(null);
-  const[ready,setReady]=useState(false),[open,setOpen]=useState(false),[threadId,setThreadId]=useState(thread),[messages,setMessages]=useState<Message[]>([]),[draft,setDraft]=useState(""),[pending,setPending]=useState(false),[progress,setProgress]=useState("Thinkingâ€¦"),[error,setError]=useState(""),[retry,setRetry]=useState("");
-  useEffect(()=>setReady(isAuthenticated()&&pathname!=="/login"),[pathname]);
-  const close=useCallback(()=>{setOpen(false);requestAnimationFrame(()=>fab.current?.focus())},[]);
-  useEffect(()=>{if(!open)return;const old=document.body.style.overflow;document.body.style.overflow="hidden";requestAnimationFrame(()=>panel.current?.querySelector<HTMLElement>(FOCUS)?.focus());const key=(e:KeyboardEvent)=>{if(e.key==="Escape"){e.preventDefault();close();return}if(e.key!=="Tab"||!panel.current)return;const nodes=Array.from(panel.current.querySelectorAll<HTMLElement>(FOCUS));if(!nodes.length)return;if(e.shiftKey&&document.activeElement===nodes[0]){e.preventDefault();nodes.at(-1)?.focus()}else if(!e.shiftKey&&document.activeElement===nodes.at(-1)){e.preventDefault();nodes[0].focus()}};document.addEventListener("keydown",key);return()=>{document.body.style.overflow=old;document.removeEventListener("keydown",key)}},[close,open]);
-  useEffect(()=>{if(open)end.current?.scrollIntoView({behavior:"smooth",block:"end"})},[messages,open,pending,progress]);
-  const isAllowed=(route:string)=>route.startsWith("/")&&!route.startsWith("//")&&!route.includes("\\")&&allowedPrefixes.some(p=>route.split(/[?#]/)[0]===p||route.split(/[?#]/)[0].startsWith(`${p}/`));
-  const send=useCallback(async(raw:string)=>{const text=raw.trim();if(!text||pending||text.length>MAX)return;const prior=messages,user:Message={id:newId(),role:"user",content:text};setMessages(v=>[...v,user]);setDraft("");setPending(true);setError("");setRetry(text);setProgress("Thinkingâ€¦");const control=new AbortController();abort.current=control;try{const out=await chat({threadId,text,messages:prior,pathname,signal:control.signal,progress:setProgress});setMessages(v=>[...v,{id:newId(),role:"assistant",content:out.text,actions:out.actions,suggestions:out.suggestions}]);setRetry("")}catch(reason){if((reason as Error).name!=="AbortError"){setError((reason as Error).message||safeError(503));setMessages(v=>v.map(m=>m.id===user.id?{...m,failed:true}:m))}}finally{abort.current=null;setPending(false)}},[messages,pathname,pending,threadId]);
-  const reset=()=>{abort.current?.abort();setThreadId(thread());setMessages([]);setDraft("");setError("");setRetry("");setPending(false)};
-  if(process.env.NEXT_PUBLIC_REPEAK_AI_ASSISTANT_ENABLED==="false"||!ready)return null;
-  return <div className={styles.root}><button ref={fab} className={styles.fab} aria-label="Open Repeak AI Assistant" title="Ask Repeak AI" aria-expanded={open} onClick={()=>setOpen(true)}><Sparkles size={23}/></button>{open&&<><button className={styles.backdrop} aria-label="Close Repeak AI Assistant" onClick={close}/><aside ref={panel} className={styles.panel} role="dialog" aria-modal="true" aria-labelledby={titleId}><header className={styles.header}><span className={styles.mark}><Sparkles size={21}/></span><div className={styles.titles}><div className={styles.title} id={titleId}>Repeak AI</div><div className={styles.context}>Hub Assistant</div></div><div className={styles.headerButtons}><button className={styles.icon} aria-label="New conversation" title="New conversation" onClick={reset}><RotateCcw size={19}/></button><button className={styles.icon} aria-label="Close assistant" onClick={close}><X size={21}/></button></div></header><div className={styles.messages} aria-live="polite">{!messages.length&&<section className={styles.welcome}><h2>How can I help?</h2><p>Ask about Hub access, products, workspaces, or information available to your account.</p><div className={styles.chips}>{["How do I switch between portals?","What access does my role have?","Where can I manage my profile?","What does my approval status mean?"].map(q=><button className={styles.chip} key={q} onClick={()=>void send(q)}>{q}</button>)}</div></section>}{messages.map(m=>m.role==="user"?<div key={m.id} className={`${styles.message} ${styles.user}`}>{m.content}</div>:<div key={m.id} className={`${styles.message} ${styles.assistant}`}><div className={styles.answer}><SafeMarkdown text={m.content}/></div><div className={styles.actions}><button className={styles.action} onClick={()=>void navigator.clipboard.writeText(m.content)}><Copy size={14}/> Copy</button>{m.actions?.filter(a=>a.type==="navigate"&&a.destination?.platform==="hub"&&isAllowed(a.destination.route||"")).map(a=><button className={styles.action} key={a.destination!.route} onClick={()=>{router.push(a.destination!.route!);close()}}>{a.label}</button>)}{m.suggestions?.filter(s=>s.type==="reply"&&s.message).slice(0,3).map(s=><button className={styles.action} key={s.message} onClick={()=>void send(s.message!)}>{s.label}</button>)}</div></div>)}{pending&&<div className={styles.progress} role="status">â€¢â€¢â€¢ {progress}</div>}<div ref={end}/></div><div>{error&&<div className={styles.error} role="alert"><span>{error}</span>{retry&&<button className={styles.action} onClick={()=>{const value=retry;setMessages(v=>v.filter(m=>!(m.failed&&m.content===value)));void send(value)}}><RefreshCw size={14}/> Retry</button>}</div>}<form className={styles.composer} onSubmit={e=>{e.preventDefault();void send(draft)}}><div className={styles.box}><textarea rows={1} maxLength={MAX} value={draft} aria-label="Ask about this portal" placeholder="Ask about this portalâ€¦" onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send(draft)}}}/>{pending?<button type="button" className={styles.send} aria-label="Stop response" onClick={()=>abort.current?.abort()}><Square size={17} fill="currentColor"/></button>:<button className={styles.send} aria-label="Send message" disabled={!draft.trim()}><ArrowUp size={20}/></button>}</div><div className={styles.hint}>{draft.length>3600?`${draft.length}/${MAX}`:"Enter to send Â· Shift+Enter for a new line"}</div></form></div></aside></>}</div>;
-}
+export default function RepeakAiAssistant() {
+  const pathname = usePathname() || "/";
+  const router = useRouter();
+  const titleId = useId();
+  const fabRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const inFlightRef = useRef(false);
+  const [ready, setReady] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [threadId, setThreadId] = useState(createThreadId);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [draft, setDraft] = useState("");
+  const [pending, setPending] = useState(false);
+  const [progress, setProgress] = useState("Thinking...");
+  const [error, setError] = useState("");
+  const [retryText, setRetryText] = useState("");
 
+  useEffect(() => {
+    setReady(isAuthenticated() && pathname !== "/login");
+  }, [pathname]);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    requestAnimationFrame(() => fabRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    requestAnimationFrame(() =>
+      panelRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus(),
+    );
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+        return;
+      }
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const nodes = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
+      );
+      if (!nodes.length) return;
+      if (event.shiftKey && document.activeElement === nodes[0]) {
+        event.preventDefault();
+        nodes.at(-1)?.focus();
+      } else if (
+        !event.shiftKey &&
+        document.activeElement === nodes.at(-1)
+      ) {
+        event.preventDefault();
+        nodes[0].focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [close, open]);
+
+  useEffect(() => {
+    if (open) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, open, pending, progress]);
+
+  const isAllowed = (route: string) => {
+    if (
+      !route.startsWith("/") ||
+      route.startsWith("//") ||
+      route.includes("\\")
+    ) {
+      return false;
+    }
+    const cleanRoute = route.split(/[?#]/)[0];
+    return ALLOWED_PREFIXES.some(
+      (prefix) => cleanRoute === prefix || cleanRoute.startsWith(`${prefix}/`),
+    );
+  };
+
+  const send = useCallback(
+    async (raw: string) => {
+      const text = raw.trim();
+      if (!text || pending || inFlightRef.current || text.length > MAX_LENGTH) {
+        return;
+      }
+
+      inFlightRef.current = true;
+      const previous = messages;
+      const user: Message = { id: createId(), role: "user", content: text };
+      setMessages((current) => [...current, user]);
+      setDraft("");
+      setPending(true);
+      setError("");
+      setRetryText(text);
+      setProgress("Thinking...");
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      try {
+        const result = await streamChat({
+          threadId,
+          text,
+          messages: previous,
+          pathname,
+          signal: controller.signal,
+          onProgress: setProgress,
+        });
+        setMessages((current) => [
+          ...current,
+          {
+            id: createId(),
+            role: "assistant",
+            content: result.text,
+            actions: result.actions,
+            suggestions: result.suggestions,
+          },
+        ]);
+        setRetryText("");
+      } catch (reason) {
+        if ((reason as Error).name !== "AbortError") {
+          setError((reason as Error).message || errorForStatus(503));
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === user.id ? { ...message, failed: true } : message,
+            ),
+          );
+        }
+      } finally {
+        abortRef.current = null;
+        inFlightRef.current = false;
+        setPending(false);
+      }
+    },
+    [messages, pathname, pending, threadId],
+  );
+
+  const reset = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    inFlightRef.current = false;
+    setThreadId(createThreadId());
+    setMessages([]);
+    setDraft("");
+    setError("");
+    setRetryText("");
+    setPending(false);
+  };
+
+  if (
+    process.env.NEXT_PUBLIC_REPEAK_AI_ASSISTANT_ENABLED === "false" ||
+    !ready
+  ) {
+    return null;
+  }
+
+  return (
+    <div className={styles.root}>
+      <button
+        ref={fabRef}
+        className={styles.fab}
+        type="button"
+        aria-label="Open Repeak AI Assistant"
+        title="Ask Repeak AI"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+      >
+        <Sparkles size={23} aria-hidden />
+      </button>
+
+      {open ? (
+        <>
+          <button
+            className={styles.backdrop}
+            type="button"
+            aria-label="Close Repeak AI Assistant"
+            onClick={close}
+          />
+          <aside
+            ref={panelRef}
+            className={styles.panel}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+          >
+            <header className={styles.header}>
+              <span className={styles.mark}>
+                <Sparkles size={21} aria-hidden />
+              </span>
+              <div className={styles.titles}>
+                <div className={styles.title} id={titleId}>
+                  Repeak AI
+                </div>
+                <div className={styles.context}>Hub Assistant</div>
+              </div>
+              <div className={styles.headerButtons}>
+                <button
+                  className={styles.icon}
+                  type="button"
+                  aria-label="New conversation"
+                  title="New conversation"
+                  onClick={reset}
+                >
+                  <RotateCcw size={19} />
+                </button>
+                <button
+                  className={styles.icon}
+                  type="button"
+                  aria-label="Close assistant"
+                  onClick={close}
+                >
+                  <X size={21} />
+                </button>
+              </div>
+            </header>
+
+            <div className={styles.messages} aria-live="polite">
+              {!messages.length ? (
+                <section className={styles.welcome}>
+                  <h2>How can I help?</h2>
+                  <p>
+                    Ask about Hub access, products, workspaces, or information
+                    available to your account.
+                  </p>
+                  <div className={styles.chips}>
+                    {[
+                      "How do I switch between portals?",
+                      "What access does my role have?",
+                      "Where can I manage my profile?",
+                      "What does my approval status mean?",
+                    ].map((question) => (
+                      <button
+                        className={styles.chip}
+                        type="button"
+                        key={question}
+                        onClick={() => void send(question)}
+                      >
+                        {question}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              {messages.map((message) =>
+                message.role === "user" ? (
+                  <div
+                    key={message.id}
+                    className={`${styles.message} ${styles.user}`}
+                  >
+                    {message.content}
+                  </div>
+                ) : (
+                  <div
+                    key={message.id}
+                    className={`${styles.message} ${styles.assistant}`}
+                  >
+                    <div className={styles.answer}>
+                      <SafeMarkdown text={message.content} />
+                    </div>
+                    <div className={styles.actions}>
+                      <button
+                        className={styles.action}
+                        type="button"
+                        onClick={() =>
+                          void navigator.clipboard.writeText(message.content)
+                        }
+                      >
+                        <Copy size={14} /> Copy
+                      </button>
+                      {message.actions
+                        ?.filter(
+                          (action) =>
+                            action.type === "navigate" &&
+                            action.destination?.platform === "hub" &&
+                            isAllowed(action.destination.route || ""),
+                        )
+                        .map((action) => (
+                          <button
+                            className={styles.action}
+                            type="button"
+                            key={action.destination?.route}
+                            onClick={() => {
+                              router.push(action.destination?.route || "/home");
+                              close();
+                            }}
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      {message.suggestions
+                        ?.filter(
+                          (suggestion) =>
+                            suggestion.type === "reply" && suggestion.message,
+                        )
+                        .slice(0, 3)
+                        .map((suggestion) => (
+                          <button
+                            className={styles.action}
+                            type="button"
+                            key={suggestion.message}
+                            onClick={() => void send(suggestion.message || "")}
+                          >
+                            {suggestion.label}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                ),
+              )}
+
+              {pending ? (
+                <div className={styles.progress} role="status">
+                  <span className={styles.dots} aria-hidden>
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  {progress}
+                </div>
+              ) : null}
+              <div ref={endRef} />
+            </div>
+
+            <div>
+              {error ? (
+                <div className={styles.error} role="alert">
+                  <span>{error}</span>
+                  {retryText ? (
+                    <button
+                      className={styles.action}
+                      type="button"
+                      onClick={() => {
+                        const value = retryText;
+                        setMessages((current) =>
+                          current.filter(
+                            (message) =>
+                              !(message.failed && message.content === value),
+                          ),
+                        );
+                        void send(value);
+                      }}
+                    >
+                      <RefreshCw size={14} /> Retry
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <form
+                className={styles.composer}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void send(draft);
+                }}
+              >
+                <div className={styles.box}>
+                  <textarea
+                    rows={1}
+                    maxLength={MAX_LENGTH}
+                    value={draft}
+                    aria-label="Ask about this portal"
+                    placeholder="Ask about this portal..."
+                    onChange={(event) => setDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void send(draft);
+                      }
+                    }}
+                  />
+                  {pending ? (
+                    <button
+                      type="button"
+                      className={styles.send}
+                      aria-label="Stop response"
+                      onClick={() => abortRef.current?.abort()}
+                    >
+                      <Square size={17} fill="currentColor" />
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      className={styles.send}
+                      aria-label="Send message"
+                      disabled={!draft.trim()}
+                    >
+                      <ArrowUp size={20} />
+                    </button>
+                  )}
+                </div>
+                <div className={styles.hint}>
+                  {draft.length > 3600
+                    ? `${draft.length}/${MAX_LENGTH}`
+                    : "Enter to send - Shift+Enter for a new line"}
+                </div>
+              </form>
+            </div>
+          </aside>
+        </>
+      ) : null}
+    </div>
+  );
+}
