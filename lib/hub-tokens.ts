@@ -67,5 +67,5 @@ export const FONT = {
 
 export const LOGO = {
   white: "/repeak-wordmark-white.svg",
-  color: "/repeak-wordmark-color.svg",
+  color: "/logo/repeak-logo-full-green.svg",
 } as const;
