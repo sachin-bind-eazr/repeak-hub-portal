@@ -15,6 +15,7 @@ export interface HubUser {
   id: string;
   phoneNumber?: string;
   email?: string;
+  name?: string;
 }
 
 export function getStoredToken(): string | null {

@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
-import { setSession } from "@/lib/auth";
+import { isAuthenticated, setSession } from "@/lib/auth";
 import { LOGO } from "@/lib/hub-tokens";
 
 type Step = "phone" | "otp";
@@ -49,10 +49,14 @@ export default function LoginPage() {
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
+    if (isAuthenticated()) {
+      router.replace("/home");
+      return;
+    }
     if (resendCooldown <= 0) return;
     const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
     return () => clearTimeout(t);
-  }, [resendCooldown]);
+  }, [resendCooldown, router]);
 
   const fullPhone = `+91${phone}`;
   const phoneValid = /^\d{10}$/.test(phone);

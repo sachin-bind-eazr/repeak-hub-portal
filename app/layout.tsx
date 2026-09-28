@@ -4,6 +4,7 @@ import "./globals.css";
 import "./repeak-theme.css";
 import "@/components/om-primitives.css";
 import { HubHeader } from "@/components/HubHeader";
+import HubSsoBootstrap from "@/components/HubSsoBootstrap";
 import { ProfileProvider } from "@/lib/ProfileContext";
 import dynamic from "next/dynamic";
 
@@ -31,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={manrope.variable}>
       <body className="min-h-screen bg-canvas font-sans text-text-primary antialiased">
+        <HubSsoBootstrap />
         <ProfileProvider>
           <HubHeader />
           {children}
